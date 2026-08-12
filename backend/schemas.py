@@ -1,20 +1,33 @@
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Optional
 
-# Estrutura base com os campos comuns
+# Base comum
 class TransactionBase(BaseModel):
     description: str
     value: float
-    type: Literal["receita", "despesa"]  
-    date: str  
+    type: Literal["receita", "despesa"]
+    category: str
+    date: str
 
-# Schema usado na requisição de CRIAÇÃO (recebe os dados do front-end)
 class TransactionCreate(TransactionBase):
     pass
 
-# Schema usado na RESPOSTA da API (devolve os dados já salvos + o ID do banco)
+# Schema de Atualização: todos os campos tornam-se opcionais (= None)
+class TransactionUpdate(BaseModel):
+    description: Optional[str] = None
+    value: Optional[float] = None
+    type: Optional[Literal["receita", "despesa"]] = None
+    category: Optional[str] = None
+    date: Optional[str] = None
+
 class TransactionResponse(TransactionBase):
     id: int
 
     class Config:
-        from_attributes = True  # Permite ler direto do objeto SQLAlchemy
+        from_attributes = True
+
+# Schema do Resumo Financeiro
+class SummaryResponse(BaseModel):
+    total_income: float
+    total_expense: float
+    balance: float
