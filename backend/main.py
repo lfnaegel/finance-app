@@ -1,16 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from backend.database import engine, Base
-import backend.models as model
+from sqlalchemy.orm import Session
+from typing import List
 
-#cria as tabelas no banco de dados SQLite caso elas ainda não existam
+from backend.database import engine, Base, get_db
+import backend.models as models
+import backend.schemas as schemas
+
+# Cria a tabela no arquivo SQLite caso não exista
 Base.metadata.create_all(bind=engine)
 
-# inicializa a aplicação FastAPI
 app = FastAPI(title="Gerenciador Financeiro")
 
-# Configuração de CORS (Cross-Origin Resource Sharing)
-# Permite que o Front-End (HTML/JS) acesse este Back-End sem ser bloqueado pelo navegador por segurança.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,7 +20,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rota principal (endpoint) para testar o funcionamento da API
-@app.get("/")
-def home():
-    return {"status": "Sucesso", "mensagem": "API Financeira rodando!"}
+# 1. ROTA DE CRIAÇÃO (CREATE)
+@app.post("/transactions", response_model=schemas.TransactionResponse, status_code=status.HTTP_201_CREATED)
+def create_transaction(transaction: schemas.TransactionCreate, db: Session = Depends(get_db)):
+    # Converte os dados do Pydantic para o modelo da tabela
+    db_transaction = models.Transaction(**transaction.model_dump())
+    db.add(db_transaction)       # Adiciona à fila de inserção
+    db.commit()                  # Executa o comando de gravação no banco
+    db.refresh(db_transaction)   # Recarrega para pegar o ID gerado automaticamente
+    return db_transaction
+
+# 2. ROTA DE LISTAGEM (READ)
+@app.get("/transactions", response_model=List[schemas.TransactionResponse])
+def read_transactions(db: Session = Depends(get_db)):
+    # Consulta todos os registros armazenados na tabela
+    transactions = db.query(models.Transaction).all()
+    return transactions
