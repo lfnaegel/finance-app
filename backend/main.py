@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
@@ -6,7 +7,9 @@ from typing import List
 from backend.database import engine, Base, get_db
 import backend.models as models
 import backend.schemas as schemas
+import backend.auth as auth
 
+# Atualiza/Cria as tabelas no SQLite
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Gerenciador Financeiro")
@@ -19,53 +22,82 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 1. CRIAR
+# --- AUTENTICAÇÃO ---
+
+@app.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Verifica se e-mail já existe
+    db_user = db.query(models.User).filter(models.User.email == user_data.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado")
+    
+    # Criptografa a senha antes de salvar
+    hashed_pwd = auth.hash_password(user_data.password)
+    new_user = models.User(email=user_data.email, hashed_password=hashed_pwd)
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+@app.post("/login", response_model=schemas.Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # O form_data usa o campo 'username' para receber o e-mail
+    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    if not user or not auth.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="E-mail ou senha incorretos")
+    
+    access_token = auth.create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# --- TRANSAÇÕES PROTEGIDAS (Exigem Login) ---
+
 @app.post("/transactions", response_model=schemas.TransactionResponse, status_code=status.HTTP_201_CREATED)
-def create_transaction(transaction: schemas.TransactionCreate, db: Session = Depends(get_db)):
-    db_transaction = models.Transaction(**transaction.model_dump())
+def create_transaction(
+    transaction: schemas.TransactionCreate, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Vincula automaticamente a transação ao ID do usuário logado
+    db_transaction = models.Transaction(**transaction.model_dump(), user_id=current_user.id)
     db.add(db_transaction)
     db.commit()
     db.refresh(db_transaction)
     return db_transaction
 
-# 2. LISTAR TODAS
 @app.get("/transactions", response_model=List[schemas.TransactionResponse])
-def read_transactions(db: Session = Depends(get_db)):
-    return db.query(models.Transaction).all()
+def read_transactions(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Retorna apenas as transações pertencentes ao usuário logado
+    return db.query(models.Transaction).filter(models.Transaction.user_id == current_user.id).all()
 
-# 3. RESUMO FINANCEIRO (Saldo, Receitas, Despesas)
 @app.get("/transactions/summary", response_model=schemas.SummaryResponse)
-def get_summary(db: Session = Depends(get_db)):
-    transactions = db.query(models.Transaction).all()
+def get_summary(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    transactions = db.query(models.Transaction).filter(models.Transaction.user_id == current_user.id).all()
     total_income = sum(t.value for t in transactions if t.type == "receita")
     total_expense = sum(t.value for t in transactions if t.type == "despesa")
-    balance = total_income - total_expense
     return {
         "total_income": total_income,
         "total_expense": total_expense,
-        "balance": balance
+        "balance": total_income - total_expense
     }
 
-# 4. ATUALIZAR (PUT)
-@app.put("/transactions/{transaction_id}", response_model=schemas.TransactionResponse)
-def update_transaction(transaction_id: int, updated_data: schemas.TransactionUpdate, db: Session = Depends(get_db)):
-    db_transaction = db.query(models.Transaction).filter(models.Transaction.id == transaction_id).first()
-    if not db_transaction:
-        raise HTTPException(status_code=404, detail="Transação não encontrada")
-    
-    # Atualiza apenas os campos enviados pelo usuário
-    update_dict = updated_data.model_dump(exclude_unset=True)
-    for key, value in update_dict.items():
-        setattr(db_transaction, key, value)
-    
-    db.commit()
-    db.refresh(db_transaction)
-    return db_transaction
-
-# 5. DELETAR (DELETE)
 @app.delete("/transactions/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
-    db_transaction = db.query(models.Transaction).filter(models.Transaction.id == transaction_id).first()
+def delete_transaction(
+    transaction_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    db_transaction = db.query(models.Transaction).filter(
+        models.Transaction.id == transaction_id,
+        models.Transaction.user_id == current_user.id
+    ).first()
+    
     if not db_transaction:
         raise HTTPException(status_code=404, detail="Transação não encontrada")
     

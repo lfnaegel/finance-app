@@ -1,7 +1,24 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Literal, Optional
 
-# Base comum
+# Schemas de Usuários
+class UserCreate(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+
+    class Config:
+        from_attributes = True
+
+# Schemas de Token JWT
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# Schemas de Transação
 class TransactionBase(BaseModel):
     description: str
     value: float
@@ -12,7 +29,6 @@ class TransactionBase(BaseModel):
 class TransactionCreate(TransactionBase):
     pass
 
-# Schema de Atualização: todos os campos tornam-se opcionais (= None)
 class TransactionUpdate(BaseModel):
     description: Optional[str] = None
     value: Optional[float] = None
@@ -22,11 +38,11 @@ class TransactionUpdate(BaseModel):
 
 class TransactionResponse(TransactionBase):
     id: int
+    user_id: int
 
     class Config:
         from_attributes = True
 
-# Schema do Resumo Financeiro
 class SummaryResponse(BaseModel):
     total_income: float
     total_expense: float
