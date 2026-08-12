@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinanceApp - Gestão Inteligente</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- TELA DE AUTENTICAÇÃO -->
+  <div id="auth-screen" class="screen-container">
+    <div class="auth-card">
+      <div class="logo">
+        <span class="icon">⚡</span>
+        <h1>Finance<span>App</span></h1>
+      </div>
+      
+      <div class="auth-tabs">
+        <button id="tab-login" class="tab-btn active" onclick="switchAuthTab('login')">Entrar</button>
+        <button id="tab-register" class="tab-btn" onclick="switchAuthTab('register')">Cadastrar</button>
+      </div>
+
+      <form id="auth-form" onsubmit="handleAuth(event)">
+        <div class="input-group">
+          <label>E-mail</label>
+          <input type="email" id="auth-email" placeholder="seu@email.com" required>
+        </div>
+        <div class="input-group">
+          <label>Senha</label>
+          <input type="password" id="auth-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" id="auth-submit-btn" class="btn primary-btn">Acessar Conta</button>
+      </form>
+      <p id="auth-error" class="error-msg"></p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD PRINCIPAL -->
+  <div id="app-screen" class="screen-container hidden">
+    <header class="navbar">
+      <div class="logo">
+        <span class="icon">⚡</span>
+        <h2>Finance<span>App</span></h2>
+      </div>
+      <div class="user-info">
+        <span id="user-email-display"></span>
+        <button onclick="logout()" class="btn logout-btn">Sair</button>
+      </div>
+    </header>
+
+    <main class="dashboard-content">
+      <!-- CARDS DE RESUMO -->
+      <section class="summary-grid">
+        <div class="card income">
+          <span class="card-title">Entradas</span>
+          <h3 id="total-income">R$ 0,00</h3>
+        </div>
+        <div class="card expense">
+          <span class="card-title">Saídas</span>
+          <h3 id="total-expense">R$ 0,00</h3>
+        </div>
+        <div class="card balance">
+          <span class="card-title">Saldo Total</span>
+          <h3 id="total-balance">R$ 0,00</h3>
+        </div>
+      </section>
+
+      <!-- PAINEL PRINCIPAL: FORMULÁRIO + TABELA -->
+      <section class="main-grid">
+        <!-- FORMULÁRIO -->
+        <div class="panel-card">
+          <h3>Nova Transação</h3>
+          <form id="transaction-form" onsubmit="handleCreateTransaction(event)">
+            <div class="input-group">
+              <label>Descrição</label>
+              <input type="text" id="tx-description" placeholder="Ex: Salário, Mercado" required>
+            </div>
+            <div class="input-group">
+              <label>Valor (R$)</label>
+              <input type="number" step="0.01" id="tx-value" placeholder="0.00" required>
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label>Tipo</label>
+                <select id="tx-type" required>
+                  <option value="receita">Receita</option>
+                  <option value="despesa">Despesa</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Categoria</label>
+                <input type="text" id="tx-category" placeholder="Ex: Alimentação" required>
+              </div>
+            </div>
+            <div class="input-group">
+              <label>Data</label>
+              <input type="date" id="tx-date" required>
+            </div>
+            <button type="submit" class="btn primary-btn">+ Adicionar</button>
+          </form>
+        </div>
+
+        <!-- LISTA DE TRANSAÇÕES -->
+        <div class="panel-card">
+          <h3>Histórico de Transações</h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Data</th>
+                  <th>Valor</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="transactions-list">
+                <!-- Injetado dinamicamente via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

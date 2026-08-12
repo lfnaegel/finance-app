@@ -9,6 +9,10 @@ import backend.models as models
 import backend.schemas as schemas
 import backend.auth as auth
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
 # Atualiza/Cria as tabelas no SQLite
 Base.metadata.create_all(bind=engine)
 
@@ -104,3 +108,12 @@ def delete_transaction(
     db.delete(db_transaction)
     db.commit()
     return None
+
+# Servir arquivos estáticos do front-end
+frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
+
+app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+
+@app.get("/", response_class=FileResponse)
+def read_index():
+    return os.path.join(frontend_path, "index.html")
