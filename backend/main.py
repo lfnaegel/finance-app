@@ -1,16 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from backend.database import engine, Base
+import backend.models as model
 
-# Inicializa a aplicação FastAPI
+#cria as tabelas no banco de dados SQLite caso elas ainda não existam
+Base.metadata.create_all(bind=engine)
+
+# inicializa a aplicação FastAPI
 app = FastAPI(title="Gerenciador Financeiro")
 
 # Configuração de CORS (Cross-Origin Resource Sharing)
 # Permite que o Front-End (HTML/JS) acesse este Back-End sem ser bloqueado pelo navegador por segurança.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Libera acesso para qualquer origem durante o desenvolvimento
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"], # Libera métodos HTTP (GET, POST, PUT, DELETE)
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
