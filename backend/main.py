@@ -16,7 +16,7 @@ import os
 # Atualiza/Cria as tabelas no SQLite
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Gerenciador Financeiro")
+app = FastAPI(title="Finly - Gestão Financeira")
 
 app.add_middleware(
     CORSMiddleware,
